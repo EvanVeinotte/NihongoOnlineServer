@@ -12,7 +12,7 @@ class ClientFuncs{
     }
 
     authenticate(msgdata, ws){
-        let auth_result = {type: "authresult", data: {}};
+        let auth_result = {type: "auth_result", data: {}};
 
         if(msgdata.version !== this.version){
             auth_result.data["result"] = "wrongversion";
@@ -33,12 +33,50 @@ class ClientFuncs{
         else{
             //no issues, so login is valid
             auth_result.data["result"] = "authsuccess"
+            console.log("Player logged in as " + msgdata.username)
 
             this.SOCKET_MAP.set(msgdata.uid, ws);
-            this.PLAYER_MAP.set(msgdata.uid, new Player(msgdata.username, ws));
+            this.PLAYER_MAP.set(msgdata.uid, new Player(msgdata.uid, msgdata.username, ws));
         }
 
         return auth_result
+    }
+
+    playerUpdate(msgdata){
+        let playerobj = this.PLAYER_MAP.get(msgdata.uid)
+        if(playerobj){
+            //set new player data
+            playerobj.state = msgdata.state
+            playerobj.facingdir = msgdata.facingdir
+            playerobj.curpos = msgdata.curpos
+            playerobj.speech = msgdata.speech
+
+            //make message data
+            let worldupdatedata = {
+                type: "world_update",
+                data: {listofplayers: []}
+            }
+
+            //add players to message
+            this.PLAYER_MAP.forEach((p) => {
+                if(p.uid !== msgdata.uid){
+                    worldupdatedata.data.listofplayers.push({
+                        uid: p.uid,
+                        state: p.state,
+                        facingdir: p.facingdir,
+                        curpos: p.curpos,
+                        speech: p.speech
+                    })
+                }
+            })
+
+            return worldupdatedata
+
+        }else{
+            console.log("!!!player tried to update player data however player obj doesn't exist!!!")
+            console.log([...this.PLAYER_MAP.entries()])
+            return false
+        }
     }
 
     sendBanned(ws, reason="cheating"){

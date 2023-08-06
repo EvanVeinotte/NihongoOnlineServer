@@ -1,14 +1,14 @@
 const Websocket = require('ws');
 const { MongoClient } = require('mongodb');
 
-const { ClientFuncs } = require('./clientfunctions');
+const { ClientFuncs } = require('./clientfuncs');
 const { getKeyByValue, removeFromArray} = require('./utils');
 
 const VERSION = "0.0.1";
 
 const PORT = 4421;
 
-const MONGODB_NAME = "SSVI"
+const MONGODB_NAME = "NihongoOnline"
 
 const wss = new Websocket.Server({port: PORT});
 
@@ -21,7 +21,6 @@ var SOCKET_MAP = new Map();
 MongoClient.connect(mongo_url, async (err, client) => {
 
     if(err) throw err;
-
     var db = client.db(MONGODB_NAME);
 
     var CF = new ClientFuncs(db, SOCKET_MAP, PLAYER_MAP, VERSION);
@@ -40,9 +39,15 @@ MongoClient.connect(mongo_url, async (err, client) => {
             let msg = JSON.parse(message);
 
             //check what type the message is here
-            if(msg.type === "authenticate"){
-                let auth_result = CF.authenticate(msg.data, ws, BANNED, IPS_BANNED, ws._socket.remoteAddress);
+            if(msg.type === "guest_login"){
+                let auth_result = CF.authenticate(msg.data, ws);
                 ws.send(JSON.stringify(auth_result));
+            }
+            else if(msg.type === "player_update"){
+                let update_result = CF.playerUpdate(msg.data);
+                if(update_result){
+                    ws.send(JSON.stringify(update_result));
+                }
             }
         });
 
